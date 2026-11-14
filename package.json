@@ -1,0 +1,12 @@
+{
+  "name": "changeproof-skills",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open agent skill and command-line tools for ChangeProof (Jira change control)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node --test \"tools/*.test.mjs\" \"release-guard/scripts/*.test.mjs\""
+  }
+}

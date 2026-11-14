@@ -1,0 +1,58 @@
+{
+  "format": "changeproof-binder-bundle/1",
+  "generatedAt": "2026-11-14T00:00:00Z",
+  "query": "project = \"PAY\" AND fixVersion = \"2026.12 Release\"",
+  "population": {
+    "keys": [
+      "PAY-1",
+      "PAY-10",
+      "PAY-11",
+      "PAY-12",
+      "PAY-2",
+      "PAY-3",
+      "PAY-6"
+    ],
+    "fingerprint": "8ab2e50efadf8b95",
+    "hashOf": "sha256 of the keys sorted in string order, joined with \\n, first 16 hex"
+  },
+  "sample": {
+    "seed": "Q4-2026",
+    "size": 3,
+    "keys": [
+      "PAY-1",
+      "PAY-2",
+      "PAY-12"
+    ],
+    "method": "FNV-1a(seed) -> mulberry32 -> Fisher-Yates over keys sorted with numeric-aware order; first N, sorted"
+  },
+  "ledger": [
+    {
+      "seq": 1,
+      "issueKey": "PAY-1",
+      "pageId": "11",
+      "generatedAt": "2026-11-10T00:00:00Z",
+      "snapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "prevHash": "GENESIS",
+      "hash": "815f4a8764775877a4bf594bd68fb522aaa79e9173171e48f8631db9a46c64aa"
+    },
+    {
+      "seq": 2,
+      "issueKey": "PAY-6",
+      "pageId": "12",
+      "generatedAt": "2026-11-11T00:00:00Z",
+      "snapshotHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "prevHash": "815f4a8764775877a4bf594bd68fb522aaa79e9173171e48f8631db9a46c64aa",
+      "hash": "19a24bc99a35cad4a51327e8eca927305621c539e0195d1b2e99d359778e0ac9"
+    },
+    {
+      "seq": 3,
+      "issueKey": "PAY-10",
+      "pageId": "13",
+      "generatedAt": "2026-11-12T00:00:00Z",
+      "snapshotHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "prevHash": "19a24bc99a35cad4a51327e8eca927305621c539e0195d1b2e99d359778e0ac9",
+      "hash": "9c8a6bbb013b574573b960227bb4710ba608c9e9245b90805bec457b7a7e5d11"
+    }
+  ],
+  "ledgerHashOf": "sha256 of canonical JSON (sorted keys) of {seq, issueKey, pageId, generatedAt, snapshotHash, prevHash}"
+}
