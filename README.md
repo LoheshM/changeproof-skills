@@ -4,7 +4,7 @@ Open [Agent Skills](https://agentskills.io) (the `SKILL.md` format) and command-
 
 The skills use ChangeProof's tools from the Atlassian MCP server, so a coding agent (Claude Code, Cursor and others) can check a change before it ships, and close the gaps it legitimately can.
 
-**Demo video (3 min):** https://youtu.be/iVDbA4CVwsU · **Install the app (Jira + Confluence):** https://loheshm.github.io/changeproof-skills/install
+**Demo video (3 min):** https://youtu.be/iVDbA4CVwsU · **Install the app (Jira + Confluence):** https://loheshm.github.io/changeproof
 
 ## `release-guard`
 
