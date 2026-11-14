@@ -1,0 +1,30 @@
+# Runs the tests and posts the real counts to ChangeProof as CI-verified evidence on the Jira change named in the
+# branch (e.g. PAY-3-card-auth-timeout → PAY-3). Secrets: CHANGEPROOF_URL and CHANGEPROOF_SECRET, from
+# Jira settings → Apps → ChangeProof policy → Getting started → CI-verified test results.
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run tests (JUnit report)
+        run: npm test
+      - name: Report to ChangeProof
+        if: always()
+        env:
+          CHANGEPROOF_URL: ${{ secrets.CHANGEPROOF_URL }}
+          CHANGEPROOF_SECRET: ${{ secrets.CHANGEPROOF_SECRET }}
+        run: node tools/ci-report.mjs --suite cards/auth --report junit.xml --command "npm test"
+  # After a production deploy job, tell ChangeProof (approvals must come before the first production deployment):
+  # deploy:
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: ./deploy.sh production
+  #     - run: node tools/ci-report.mjs --deployment production
+  #       env: { CHANGEPROOF_URL: "${{ secrets.CHANGEPROOF_URL }}", CHANGEPROOF_SECRET: "${{ secrets.CHANGEPROOF_SECRET }}" }

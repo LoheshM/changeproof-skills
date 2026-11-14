@@ -21,15 +21,31 @@ export function countReport(text) {
   const t = String(text).trim();
   if (t.startsWith('{')) {
     const j = JSON.parse(t);
-    return { passed: j.numPassedTests || 0, failed: j.numFailedTests || 0, skipped: (j.numPendingTests || 0) + (j.numTodoTests || 0) };
+    // A test file that crashed before running its tests is a failure, even if no single test failed.
+    let failed = (j.numFailedTests || 0) + (j.numRuntimeErrorTestSuites || 0);
+    if (j.success === false && failed < 1) failed = 1;
+    return { passed: j.numPassedTests || 0, failed, skipped: (j.numPendingTests || 0) + (j.numTodoTests || 0) };
   }
-  const cases = t.match(/<testcase\b[\s\S]*?(?:\/>|<\/testcase>)/g) || [];
-  let failed = 0; let skipped = 0;
-  for (const c of cases) {
-    if (/<(failure|error)\b/.test(c)) failed += 1;
-    else if (/<skipped\b/.test(c)) skipped += 1;
+  // JUnit XML: ignore comments and CDATA (a "<testcase>" inside them is not a test), read each <testcase> element by
+  // its tags (an attribute value may contain "/>"), and never report fewer failures than the suites declare.
+  const x = t.replace(/<!--[\s\S]*?-->/g, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '');
+  const open = /<testcase\b((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/g;
+  let cases = 0; let failed = 0; let skipped = 0; let m;
+  while ((m = open.exec(x))) {
+    cases += 1;
+    if (m[2] === '/') continue; // <testcase .../> has no children: it passed
+    const close = x.indexOf('</testcase>', open.lastIndex);
+    const body = x.slice(open.lastIndex, close < 0 ? x.length : close);
+    if (/<(failure|error)\b/.test(body)) failed += 1;
+    else if (/<skipped\b/.test(body)) skipped += 1;
   }
-  return { passed: cases.length - failed - skipped, failed, skipped };
+  let declared = 0;
+  const suite = /<testsuite\b((?:[^>"']|"[^"]*"|'[^']*')*?)\/?>/g;
+  while ((m = suite.exec(x))) {
+    const attr = (name) => Number((m[1].match(new RegExp(`\\b${name}\\s*=\\s*["'](\\d+)["']`)) || [])[1] || 0);
+    declared += attr('failures') + attr('errors');
+  }
+  return { passed: Math.max(0, cases - failed - skipped), failed: Math.max(failed, declared), skipped };
 }
 
 export const keyFromBranch = (branch) => {

@@ -54,7 +54,18 @@ export function verifyBundle(b) {
     else if (i > 0 && r.prevHash !== recs[i - 1].hash) { chainOk = false; reason = `record #${r.seq} doesn't link to record #${recs[i - 1].seq}`; }
   }
   if (recs.length && recs[0].seq === 1 && recs[0].prevHash !== 'GENESIS') { chainOk = false; reason = 'record #1 doesn\'t start the chain'; }
-  ok('Ledger chain', chainOk, recs.length ? reason : 'no ledger records in the bundle');
+  // Bundles from November 2026 on carry the chain head and the record count: the chain must start at #1, be
+  // complete, and end exactly at that head (so records cut off the end or a shortened, re-chained ledger fail).
+  if (chainOk && b.head !== undefined) {
+    const last = recs[recs.length - 1];
+    if (!b.head) { if (recs.length) { chainOk = false; reason = 'the bundle says the ledger is empty but contains records'; } }
+    else if (!recs.length) { chainOk = false; reason = `the ledger is empty but its head is #${b.head.seq}`; }
+    else if (recs[0].seq !== 1) { chainOk = false; reason = `the ledger starts at #${recs[0].seq}, not #1`; }
+    else if (last.seq !== b.head.seq || last.hash !== b.head.hash) { chainOk = false; reason = `the ledger ends at #${last.seq}, not at its head #${b.head.seq}`; }
+    else if (recs.length !== b.count) { chainOk = false; reason = `${recs.length} record(s), but the bundle says ${b.count}`; }
+    if (chainOk) reason += `; ends at head #${b.head.seq} ${String(b.head.hash).slice(0, 16)}`;
+  }
+  ok('Ledger chain', chainOk, recs.length ? reason : (chainOk ? 'no ledger records in the bundle' : reason));
 
   // 2. Population fingerprint.
   const keys = b.population?.keys || [];
@@ -67,6 +78,8 @@ export function verifyBundle(b) {
   const same = redrawn.length === claimed.length && redrawn.every((k, i) => k === claimed[i]);
   ok('Seeded sample', same, `seed "${b.sample?.seed}", size ${b.sample?.size} → ${redrawn.join(', ') || '(empty)'}${same ? '' : ` (binder says ${claimed.join(', ')})`}`);
 
+  // Older bundles (no head) are still checked as before, with a note on what to compare by hand.
+  if (b.head === undefined && recs.length) results.push({ name: 'Chain head', pass: true, warning: true, detail: 'this bundle predates chain heads: compare the last record\'s hash with the ledger head shown in Jira' });
   return { pass: results.every((r) => r.pass), results };
 }
 
@@ -78,7 +91,8 @@ if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/').replace(/
   if (bundle.format !== 'changeproof-binder-bundle/1') { console.error('Not a ChangeProof verification bundle (format changeproof-binder-bundle/1).'); process.exit(2); }
   const v = verifyBundle(bundle);
   console.log(`ChangeProof binder verification · ${bundle.query || ''}`);
-  for (const r of v.results) console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.name}: ${r.detail}`);
+  for (const r of v.results) console.log(`${r.warning ? 'NOTE' : r.pass ? 'PASS' : 'FAIL'}  ${r.name}: ${r.detail}`);
   console.log(v.pass ? 'VERIFIED: the binder matches its own evidence.' : 'NOT VERIFIED: see the failures above.');
+  if (v.pass && bundle.head) console.log(`Chain head #${bundle.head.seq} ${String(bundle.head.hash).slice(0, 16)}: it should match the ledger head on the binder page and in Verify in Jira.`);
   process.exit(v.pass ? 0 : 1);
 }

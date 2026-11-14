@@ -1,0 +1,2 @@
+{ "name": "cards-gateway", "private": true, "type": "module",
+  "scripts": { "test": "node --test --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=spec --test-reporter-destination=stdout" } }
