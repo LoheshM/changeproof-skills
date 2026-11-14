@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // Verify a ChangeProof audit binder WITHOUT trusting ChangeProof.
 //
-//   node tools/verify-binder.mjs bundle.json
+//   node tools/verify-binder.mjs bundle.json [--key <site public key>]
 //
 // bundle.json is the "ChangeProof verification bundle" code block at the end of an audit binder page.
 // Node.js only: no dependencies, no network. It independently recomputes:
 //   1. every ledger record's SHA-256 hash and its link to the previous record (tamper evidence);
 //   2. the population fingerprint from the population key list (completeness of what was sampled from);
-//   3. the seeded sample, from the seed and the population (the sample wasn't hand-picked).
+//   3. the seeded sample, from the seed and the population (the sample wasn't hand-picked);
+//   4. the site's Ed25519 signature over the whole bundle (with --key: that it came from that site, unedited).
 // Exit code 0 = everything verified; 1 = something did not match; 2 = bad input.
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, createPublicKey, verify as cryptoVerify } from 'node:crypto';
 
 const sha256 = (s) => createHash('sha256').update(String(s ?? ''), 'utf8').digest('hex');
 const canonical = (v) => {
@@ -39,7 +40,36 @@ export function drawSample(keys, size, seed) {
   return pool.slice(0, Math.max(0, Math.min(size, pool.length))).sort(byKey);
 }
 
-export function verifyBundle(b) {
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+const keyIdOf = (pub) => createHash('sha256').update(Buffer.from(pub, 'base64')).digest('hex').slice(0, 16);
+
+/** Ed25519 signature over the canonical JSON of the bundle without its signature field. */
+export function checkSignature(b, expectedKey = null) {
+  const sig = b.signature;
+  if (!sig) {
+    return expectedKey
+      ? { pass: false, detail: 'the bundle is not signed, but a site key was given' }
+      : { pass: true, warning: true, detail: 'unsigned bundle (made before binders were signed): the checks above still hold' };
+  }
+  if (sig.alg !== 'Ed25519' || typeof sig.publicKey !== 'string' || typeof sig.value !== 'string') return { pass: false, detail: 'unknown or malformed signature' };
+  const { signature, ...unsigned } = b;
+  let valid = false;
+  try {
+    const raw = Buffer.from(sig.publicKey, 'base64');
+    if (raw.length !== 32) throw new Error('bad key');
+    const key = createPublicKey({ key: Buffer.concat([ED25519_SPKI_PREFIX, raw]), format: 'der', type: 'spki' });
+    valid = cryptoVerify(null, Buffer.from(canonical(unsigned), 'utf8'), key, Buffer.from(sig.value, 'base64'));
+  } catch { valid = false; }
+  const id = keyIdOf(sig.publicKey);
+  if (!valid) return { pass: false, detail: `the signature does not match the bundle (key ID ${id}): the bundle was edited after it was signed` };
+  if (expectedKey) {
+    const same = String(expectedKey).trim() === sig.publicKey || String(expectedKey).trim().toLowerCase() === id;
+    return same ? { pass: true, detail: `signed by the site key you gave (key ID ${id})` } : { pass: false, detail: `signed by key ID ${id}, not the site key you gave (key ID ${/^[0-9a-f]{16}$/i.test(String(expectedKey).trim()) ? String(expectedKey).trim().toLowerCase() : keyIdOf(String(expectedKey).trim())})` };
+  }
+  return { pass: true, warning: true, detail: `valid signature by key ID ${id}; pass --key with the public key from Jira (ChangeProof policy → Getting started) to confirm it is your site's` };
+}
+
+export function verifyBundle(b, { key = null } = {}) {
   const results = [];
   const ok = (name, pass, detail) => results.push({ name, pass, detail });
 
@@ -80,16 +110,21 @@ export function verifyBundle(b) {
 
   // Older bundles (no head) are still checked as before, with a note on what to compare by hand.
   if (b.head === undefined && recs.length) results.push({ name: 'Chain head', pass: true, warning: true, detail: 'this bundle predates chain heads: compare the last record\'s hash with the ledger head shown in Jira' });
+  // 4. Signature (bundles from round 20 on). Placed last so older result positions stay the same.
+  results.push({ name: 'Signature', ...checkSignature(b, key) });
   return { pass: results.every((r) => r.pass), results };
 }
 
 if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/').replace(/^(?!\/)/, '/')}` || process.argv[1]?.endsWith('verify-binder.mjs')) {
-  const file = process.argv[2];
-  if (!file) { console.error('Usage: node tools/verify-binder.mjs bundle.json'); process.exit(2); }
+  const args = process.argv.slice(2);
+  const ki = args.indexOf('--key');
+  const key = ki >= 0 ? args[ki + 1] : null;
+  const file = args.find((a, i) => !a.startsWith('--') && (ki < 0 || i !== ki + 1));
+  if (!file || (ki >= 0 && !key)) { console.error('Usage: node tools/verify-binder.mjs bundle.json [--key <site public key>]'); process.exit(2); }
   let bundle;
   try { bundle = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { console.error(`Could not read ${file}: ${e.message}`); process.exit(2); }
   if (bundle.format !== 'changeproof-binder-bundle/1') { console.error('Not a ChangeProof verification bundle (format changeproof-binder-bundle/1).'); process.exit(2); }
-  const v = verifyBundle(bundle);
+  const v = verifyBundle(bundle, { key });
   console.log(`ChangeProof binder verification · ${bundle.query || ''}`);
   for (const r of v.results) console.log(`${r.warning ? 'NOTE' : r.pass ? 'PASS' : 'FAIL'}  ${r.name}: ${r.detail}`);
   console.log(v.pass ? 'VERIFIED: the binder matches its own evidence.' : 'NOT VERIFIED: see the failures above.');

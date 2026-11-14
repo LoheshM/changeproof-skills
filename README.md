@@ -62,13 +62,16 @@ asks before its first write in a session.
 Every ChangeProof audit binder page ends with a **verification bundle** (a JSON block). An auditor copies it into `bundle.json` and runs:
 
 ```
-node tools/verify-binder.mjs bundle.json
+node tools/verify-binder.mjs bundle.json --key <site public key>
 ```
 
 It recomputes, independently of the app:
 1. every evidence-ledger record's SHA-256 hash and its link to the previous record (an edited or removed record is caught);
 2. the population fingerprint from the list of changes (a change left out of the population is caught);
-3. the seeded sample (a hand-picked sample is caught).
+3. the seeded sample (a hand-picked sample is caught);
+4. the bundle's Ed25519 signature. With `--key` (the site's public key, from ChangeProof policy → Getting started →
+   Binder signing key, or its 16-character key ID) it also proves the bundle came from that site; an edited or
+   re-signed bundle fails. Bundles made before signing still verify, with a note.
 
 Exit code 0 = verified, 1 = something didn't match, 2 = bad input. Try it on `tools/examples/sample-bundle.json`.
 
@@ -88,9 +91,10 @@ node tools/ci-report.mjs --deployment production [--issue PAY-3]
 
 The Jira key comes from `--issue`, or from the branch name (`pay-3-card-timeout` → `PAY-3`).
 
-What "CI-verified" proves: the result was signed by a pipeline that holds your site's secret, with counts read from
-the real report (a crashed test file or a suite-level error counts as a failure). Keep the secret in protected CI
-settings, and use protected branches and environment protection rules, so only your pipelines can sign.
+What "CI-verified" proves: the result was signed by a pipeline that holds the secret, with counts read from the
+real report (a crashed test file or a suite-level error counts as a failure). A project can have its own secret
+(Getting started → Per-project secrets); then only that project's pipelines can post to it. Keep secrets in protected
+CI settings, and use protected branches and environment protection rules, so only your pipelines can sign.
 
 GitHub Actions step:
 

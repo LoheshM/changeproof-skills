@@ -88,3 +88,19 @@ test('ci-report: crashed test files, "/>" in names, suite-level errors and comme
   assert.deepEqual(countReport('<testsuite><!-- <testcase name="placeholder"/> --></testsuite>'), { passed: 0, failed: 0, skipped: 0 });
   assert.deepEqual(countReport('<testsuite failures="1"><testcase name="a"/><testcase name="b"><failure/></testcase><testcase name="c"><skipped/></testcase></testsuite>'), { passed: 1, failed: 1, skipped: 1 });
 });
+
+test('verify-binder: a signed bundle verifies against its site key, and any edit or another key fails', async () => {
+  const { generateKeyPairSync, sign } = await import('node:crypto');
+  const canon = (v) => (Array.isArray(v) ? `[${v.map(canon).join(',')}]` : v && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}` : JSON.stringify(v ?? null));
+  const pair = () => { const k = generateKeyPairSync('ed25519'); return { k, pub: k.publicKey.export({ format: 'der', type: 'spki' }).subarray(12).toString('base64') }; };
+  const site = pair();
+  const signWith = (b, p) => ({ ...b, signature: { alg: 'Ed25519', publicKey: p.pub, value: sign(null, Buffer.from(canon(b)), p.k.privateKey).toString('base64') } });
+  const signed = signWith(sample(), site);
+  const sig = (v) => v.results.find((r) => r.name === 'Signature');
+  assert.equal(verifyBundle(signed, { key: site.pub }).pass, true);
+  const edited = { ...signed, query: 'something else' };
+  assert.equal(verifyBundle(edited, { key: site.pub }).pass, false);
+  assert.match(sig(verifyBundle(edited)).detail, /edited after it was signed/);
+  assert.equal(verifyBundle(signWith(sample(), pair()), { key: site.pub }).pass, false, 'signed by another key');
+  assert.equal(sig(verifyBundle(sample())).warning, true, 'unsigned bundles still verify, with a note');
+});
