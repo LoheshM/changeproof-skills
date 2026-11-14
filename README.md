@@ -27,14 +27,17 @@ more: 16 tools). Without that connection the skill can't do anything, so set up 
 
 1. **The ChangeProof app** is installed on your Atlassian site, in Jira **and** Confluence:
    https://loheshm.github.io/changeproof
-2. **MCP is turned on for ChangeProof** (once per site, by an admin): admin.atlassian.com → your organization →
-   Apps → Connected apps (or Sites and apps) → ChangeProof → enable **Tools**.
+2. **MCP is turned on for ChangeProof** (once per site, by a site admin; Rovo is not needed): admin.atlassian.com →
+   Apps → Sites → your site → **Connected apps** → search ChangeProof. It is listed twice (Jira and Confluence): on
+   each, **View app details** → **Tools** → **Enable tools**.
 3. **Your agent is connected to the MCP server**:
    - Claude Code:
      ```
      claude mcp add --transport http changeproof https://mcp.atlassian.com/forge/872ce7fc-ddc9-4dcf-b58a-19fca5a48a6e
      ```
      then run `/mcp`, choose `changeproof` and sign in with your Atlassian account, approving the access it asks for.
+     One sign-in reaches one site: on the consent screen pick the site where ChangeProof is installed (to switch
+     later, `/mcp` → `changeproof` → re-authenticate).
    - Cursor: add it to `.cursor/mcp.json` (or Settings → MCP), then sign in when Cursor prompts:
      ```json
      { "mcpServers": { "changeproof": { "url": "https://mcp.atlassian.com/forge/872ce7fc-ddc9-4dcf-b58a-19fca5a48a6e" } } }

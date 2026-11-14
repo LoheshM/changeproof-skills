@@ -1,6 +1,6 @@
 # cards-gateway runtime config (served by the config service; changes apply within 60 s, no deploy)
 service: cards-gateway
-auth_timeout_ms: 6000
+auth_timeout_ms: 3000
 retry_on_timeout: false
 issuer_overrides:
   apac: {}

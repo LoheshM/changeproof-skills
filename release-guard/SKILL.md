@@ -61,6 +61,9 @@ suites already recorded (reuse the same suite name, so an old failing record is 
 
    Record failing runs too. Never re-run a subset to make a run pass.
 
+   Whether the run will read "self-reported" or "peer-recorded" depends on who is signed in to the MCP server:
+   take it from the `Signed in as:` line of `explain-gaps`, never assume the user is the assignee.
+
 ### Rollback plan (`agent: draft-only`)
 1. Call `get-draft-sources` and note every system, config key, feature flag and runbook it names.
 2. Look up each one in the repository:
