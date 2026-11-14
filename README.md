@@ -82,6 +82,10 @@ GitHub Actions step:
 
 Run all tests with `npm test` (or `node --test "tools/*.test.mjs" "release-guard/scripts/*.test.mjs"`).
 
+## Privacy
+
+The ChangeProof app's privacy policy: [PRIVACY.md](PRIVACY.md).
+
 ## Licence
 
 Apache-2.0. The ChangeProof app itself is not part of this repository.
